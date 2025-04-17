@@ -1,0 +1,14 @@
+out
+dist
+node_modules
+.vscode-test/
+*.vsix
+memo.md
+.env
+.DS_Store
+*.log
+.vscode/
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
