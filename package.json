@@ -2,7 +2,7 @@
   "name": "api-route-jumper",
   "displayName": "API Route Jumper",
   "description": "",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "engines": {
     "vscode": "^1.60.0"
   },
@@ -41,6 +41,11 @@
           "type": "string",
           "default": "apps/server/src/routes/",
           "description": "サーバールートのパス（例: apps/server/src/routes/）"
+        },
+        "apiRouteJumper.apiRootName": {
+          "type": "string",
+          "default": "app",
+          "description": "APIルート名（例: app, v1, api など）"
         }
       }
     }

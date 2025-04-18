@@ -14,7 +14,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   class ApiCallCodeLensProvider implements vscode.CodeLensProvider {
     private apiCallRegex =
-      /apiClient\(\)\.(app(?:\.(?:[a-zA-Z0-9_]+(?:\([^)]*\))?))+)[.,]\s*['\"]?(get|post|put|delete|\$get|\$post|\$put|\$delete)['\"]?\b/g;
+      /apiClient\(\)\.([a-zA-Z0-9_]+(?:\.(?:[a-zA-Z0-9_]+(?:\([^)]*\))?))+)[.,]\s*['\"]?(get|post|put|delete|\$get|\$post|\$put|\$delete)['\"]?\b/g;
 
     provideCodeLenses(
       document: vscode.TextDocument,
