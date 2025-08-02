@@ -2,7 +2,7 @@
   "name": "api-route-jumper",
   "displayName": "API Route Jumper",
   "description": "",
-  "version": "0.0.2",
+  "version": "0.0.8",
   "engines": {
     "vscode": "^1.60.0"
   },

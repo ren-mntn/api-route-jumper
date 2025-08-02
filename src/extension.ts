@@ -1,6 +1,20 @@
 import * as vscode from "vscode";
+import { findApiCalls, generateServerPath } from "./api-parser";
 
 export function activate(context: vscode.ExtensionContext) {
+  // 設定キャッシュ
+  let cachedConfig = vscode.workspace.getConfiguration("apiRouteJumper");
+
+  // 設定変更の監視
+  const configChangeDisposable = vscode.workspace.onDidChangeConfiguration(
+    (e) => {
+      if (e.affectsConfiguration("apiRouteJumper")) {
+        cachedConfig = vscode.workspace.getConfiguration("apiRouteJumper");
+      }
+    }
+  );
+  context.subscriptions.push(configChangeDisposable);
+
   const disposable = vscode.commands.registerCommand(
     "api-route-jumper.helloWorld",
     () => {
@@ -13,16 +27,15 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposable);
 
   class ApiCallCodeLensProvider implements vscode.CodeLensProvider {
-    private apiCallRegex =
-      /apiClient\(\)\.([a-zA-Z0-9_]+(?:\.(?:[a-zA-Z0-9_]+(?:\([^)]*\))?))+)[.,]\s*['\"]?(get|post|put|delete|\$get|\$post|\$put|\$delete)['\"]?\b/g;
-
     provideCodeLenses(
       document: vscode.TextDocument,
       token: vscode.CancellationToken
     ): vscode.CodeLens[] | Thenable<vscode.CodeLens[]> {
       const codeLenses: vscode.CodeLens[] = [];
       const text = document.getText();
-      for (const match of text.matchAll(this.apiCallRegex)) {
+      const matches = findApiCalls(text);
+
+      for (const match of matches) {
         const startPos = document.positionAt(match.index!);
         const endPos = document.positionAt(match.index! + match[0].length);
         const range = new vscode.Range(startPos, endPos);
@@ -38,55 +51,49 @@ export function activate(context: vscode.ExtensionContext) {
     }
   }
 
-  context.subscriptions.push(
-    vscode.languages.registerCodeLensProvider(
-      { scheme: "file", language: "typescript" },
-      new ApiCallCodeLensProvider()
-    )
-  );
-  context.subscriptions.push(
-    vscode.languages.registerCodeLensProvider(
-      { scheme: "file", language: "javascript" },
-      new ApiCallCodeLensProvider()
-    )
-  );
-  context.subscriptions.push(
-    vscode.languages.registerCodeLensProvider(
-      { scheme: "file", language: "typescriptreact" },
-      new ApiCallCodeLensProvider()
-    )
-  );
+  // 複数言語を1つのProviderで処理
+  const provider = new ApiCallCodeLensProvider();
+  const supportedLanguages = ["typescript", "javascript", "typescriptreact"];
+
+  for (const language of supportedLanguages) {
+    context.subscriptions.push(
+      vscode.languages.registerCodeLensProvider(
+        { scheme: "file", language },
+        provider
+      )
+    );
+  }
 
   const jumpDisposable = vscode.commands.registerCommand(
     "api-route-jumper.jumpToServer",
     (apiCall: string) => {
-      const config = vscode.workspace.getConfiguration("apiRouteJumper");
-      const serverRouteRoot: string = config.get(
+      const serverRouteRoot: string = cachedConfig.get(
         "serverRouteRoot",
         "apps/server/src/routes/"
       );
-      const parts = apiCall.split(".");
-      const routeParts = parts
-        .slice(1, -1)
-        .map((part) => part.replace(/\(.*\)/, ""));
+
+      const routePath = generateServerPath(apiCall);
       const serverPath = `${serverRouteRoot.replace(
         /\/$/,
         ""
-      )}/${routeParts.join("/")}/_handlers.ts`;
+      )}/${routePath}/_handlers.ts`;
       const wsFolder = vscode.workspace.workspaceFolders?.[0];
+
       if (wsFolder) {
         const fileUri = vscode.Uri.joinPath(wsFolder.uri, serverPath);
-        vscode.workspace.fs.stat(fileUri).then(
-          () =>
-            vscode.window.showTextDocument(fileUri, {
-              preview: false,
-              viewColumn: vscode.ViewColumn.Active,
-            }),
-          () =>
-            vscode.window.showWarningMessage(
-              `Server file not found: ${serverPath}`
-            )
-        );
+        // ファイルを直接開いてエラーハンドリング（stat不要）
+        vscode.window
+          .showTextDocument(fileUri, {
+            preview: false,
+            viewColumn: vscode.ViewColumn.Active,
+          })
+          .then(
+            undefined, // 成功時は何もしない
+            () =>
+              vscode.window.showWarningMessage(
+                `Server file not found: ${serverPath}`
+              )
+          );
       } else {
         vscode.window.showWarningMessage("No workspace folder found.");
       }
